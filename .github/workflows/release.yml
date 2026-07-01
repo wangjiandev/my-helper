@@ -47,7 +47,9 @@ jobs:
           cp libpdfium.dylib invoice-printer-mac/
           cp packaging/run.command invoice-printer-mac/
           chmod +x invoice-printer-mac/run.command
-          codesign -s - invoice-printer-mac/invoice-printer invoice-printer-mac/libpdfium.dylib
+          # lipo 合并 dylib 会破坏原有签名，必须 --force 重签，否则 macOS AMFI 拒绝加载
+          codesign --force --sign - invoice-printer-mac/invoice-printer invoice-printer-mac/libpdfium.dylib
+          codesign --verify -vv invoice-printer-mac/libpdfium.dylib
           ditto -c -k --keepParent invoice-printer-mac invoice-printer-mac.zip
       - uses: actions/upload-artifact@v4
         with:
