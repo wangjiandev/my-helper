@@ -3,7 +3,7 @@ name: release
 on:
   push:
     branches: [main]
-    tags: ["v*"]
+    tags: ['v*']
   workflow_dispatch:
 
 permissions:
@@ -29,30 +29,35 @@ jobs:
             -output invoice-printer
       - name: Fetch pdfium and build universal dylib
         run: |
-          TAG=$(curl -sL https://api.github.com/repos/bblanchon/pdfium-binaries/releases/latest | sed -n 's/.*"tag_name": "\(.*\)".*/\1/p' | head -1)
-          echo "pdfium $TAG"
+          set -e
+          BASE=https://github.com/bblanchon/pdfium-binaries/releases/latest/download
+          curl -L --fail -o arm64.tgz "$BASE/pdfium-mac-arm64.tgz"
+          curl -L --fail -o x64.tgz  "$BASE/pdfium-mac-x64.tgz"
+          ls -l arm64.tgz x64.tgz
+          file arm64.tgz x64.tgz
           mkdir -p tmp/arm64 tmp/x64
-          curl -sL "https://github.com/bblanchon/pdfium-binaries/releases/download/${TAG}/pdfium-mac-arm64.tgz" | tar xz -C tmp/arm64
-          curl -sL "https://github.com/bblanchon/pdfium-binaries/releases/download/${TAG}/pdfium-mac-x64.tgz" | tar xz -C tmp/x64
+          tar xzf arm64.tgz -C tmp/arm64
+          tar xzf x64.tgz  -C tmp/x64
           lipo -create tmp/arm64/lib/libpdfium.dylib tmp/x64/lib/libpdfium.dylib -output libpdfium.dylib
       - name: Assemble package
         run: |
-          mkdir -p dprint-mac
-          cp invoice-printer dprint-mac/
-          cp libpdfium.dylib dprint-mac/
-          cp packaging/dprint.command dprint-mac/
-          chmod +x dprint-mac/dprint.command
-          codesign -s - dprint-mac/invoice-printer dprint-mac/libpdfium.dylib
-          ditto -c -k --keepParent dprint-mac dprint-mac.zip
+          set -e
+          mkdir -p invoice-printer-mac
+          cp invoice-printer invoice-printer-mac/
+          cp libpdfium.dylib invoice-printer-mac/
+          cp packaging/run.command invoice-printer-mac/
+          chmod +x invoice-printer-mac/run.command
+          codesign -s - invoice-printer-mac/invoice-printer invoice-printer-mac/libpdfium.dylib
+          ditto -c -k --keepParent invoice-printer-mac invoice-printer-mac.zip
       - uses: actions/upload-artifact@v4
         with:
-          name: dprint-mac
-          path: dprint-mac.zip
+          name: invoice-printer-mac
+          path: invoice-printer-mac.zip
       - name: Attach to release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: dprint-mac.zip
+          files: invoice-printer-mac.zip
 
   windows:
     runs-on: windows-latest
@@ -62,27 +67,30 @@ jobs:
       - name: Build
         run: cargo build --release
       - name: Fetch pdfium
-        shell: bash
+        shell: pwsh
         run: |
-          TAG=$(curl -sL https://api.github.com/repos/bblanchon/pdfium-binaries/releases/latest | sed -n 's/.*"tag_name": "\(.*\)".*/\1/p' | head -1)
-          echo "pdfium $TAG"
-          mkdir -p tmp
-          curl -sL "https://github.com/bblanchon/pdfium-binaries/releases/download/${TAG}/pdfium-win-x64.tgz" | tar xz -C tmp
-          cp tmp/bin/pdfium.dll .
+          $ErrorActionPreference = 'Stop'
+          $base = 'https://github.com/bblanchon/pdfium-binaries/releases/latest/download'
+          Invoke-WebRequest -Uri "$base/pdfium-win-x64.tgz" -OutFile pdfium.tgz
+          Get-Item pdfium.tgz | Select-Object Name,Length
+          New-Item -ItemType Directory -Force -Path tmp | Out-Null
+          tar xzf pdfium.tgz -C tmp
+          if (-not (Test-Path tmp/bin/pdfium.dll)) { throw "pdfium.dll not found after extract" }
       - name: Assemble package
-        shell: bash
+        shell: pwsh
         run: |
-          mkdir -p dprint-win
-          cp target/release/invoice-printer.exe dprint-win/
-          cp pdfium.dll dprint-win/
-          cp packaging/dprint.bat dprint-win/
-          7z a dprint-win.zip dprint-win
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force -Path invoice-printer-win | Out-Null
+          Copy-Item target/release/invoice-printer.exe invoice-printer-win/
+          Copy-Item tmp/bin/pdfium.dll invoice-printer-win/
+          Copy-Item packaging/run.bat invoice-printer-win/
+          Compress-Archive -Path invoice-printer-win -DestinationPath invoice-printer-win.zip
       - uses: actions/upload-artifact@v4
         with:
-          name: dprint-win
-          path: dprint-win.zip
+          name: invoice-printer-win
+          path: invoice-printer-win.zip
       - name: Attach to release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: dprint-win.zip
+          files: invoice-printer-win.zip

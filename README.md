@@ -8,14 +8,14 @@
 
 | 平台 | 下载 | 启动文件 |
 |---|---|---|
-| macOS（Apple Silicon + Intel 通用） | `发票打印机-mac.zip` | 双击 `发票打印.command` |
-| Windows（x64） | `发票打印机-win.zip` | 双击 `发票打印.bat` |
+| macOS（Apple Silicon + Intel 通用） | `invoice-printer-mac.zip` | 双击 `run.command` |
+| Windows（x64） | `invoice-printer-win.zip` | 双击 `run.bat` |
 
 行为：读取**启动器所在文件夹**（含子目录）的所有 PDF，生成 `output.pdf` 到同一文件夹，并在终端打印分类金额统计表。
 
 **首次运行放行（仅需一次，因未做开发者签名）：**
 
-- **macOS**：首次双击 `发票打印.command` 若提示「无法打开/无法验证开发者」，请 `右键 → 打开 → 打开`；或在终端对解压后的文件夹执行 `xattr -dr com.apple.quarantine 发票打印机-mac`（启动器内部也会自动清除隔离属性）。
+- **macOS**：首次双击 `run.command` 若提示「无法打开/无法验证开发者」，请 `右键 → 打开 → 打开`；或在终端对解压后的文件夹执行 `xattr -dr com.apple.quarantine invoice-printer-mac`（启动器内部也会自动清除隔离属性）。
 - **Windows**：若 SmartScreen 提示「已保护你的电脑」，点 `更多信息 → 仍要运行`。
 
 > 包内已自带对应平台的 `libpdfium` 动态库，无需再运行 `fetch-pdfium.sh`。需要自行从源码构建时，继续看下方「快速开始」。
