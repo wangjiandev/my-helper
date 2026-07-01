@@ -1,0 +1,87 @@
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - name: Build (arm64 + x86_64)
+        run: |
+          cargo build --release --target aarch64-apple-darwin
+          cargo build --release --target x86_64-apple-darwin
+      - name: Create universal binary
+        run: |
+          lipo -create \
+            target/aarch64-apple-darwin/release/invoice-printer \
+            target/x86_64-apple-darwin/release/invoice-printer \
+            -output invoice-printer
+      - name: Fetch pdfium and build universal dylib
+        run: |
+          TAG=$(curl -sL https://api.github.com/repos/bblanchon/pdfium-binaries/releases/latest | sed -n 's/.*"tag_name": "\(.*\)".*/\1/p' | head -1)
+          echo "pdfium $TAG"
+          mkdir -p tmp/arm64 tmp/x64
+          curl -sL "https://github.com/bblanchon/pdfium-binaries/releases/download/${TAG}/pdfium-mac-arm64.tgz" | tar xz -C tmp/arm64
+          curl -sL "https://github.com/bblanchon/pdfium-binaries/releases/download/${TAG}/pdfium-mac-x64.tgz" | tar xz -C tmp/x64
+          lipo -create tmp/arm64/lib/libpdfium.dylib tmp/x64/lib/libpdfium.dylib -output libpdfium.dylib
+      - name: Assemble package
+        run: |
+          mkdir -p 发票打印机-mac
+          cp invoice-printer 发票打印机-mac/
+          cp libpdfium.dylib 发票打印机-mac/
+          cp packaging/发票打印.command 发票打印机-mac/
+          chmod +x 发票打印机-mac/发票打印.command
+          codesign -s - 发票打印机-mac/invoice-printer 发票打印机-mac/libpdfium.dylib
+          ditto -c -k --keepParent 发票打印机-mac 发票打印机-mac.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: 发票打印机-mac
+          path: 发票打印机-mac.zip
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: 发票打印机-mac.zip
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build
+        run: cargo build --release
+      - name: Fetch pdfium
+        shell: bash
+        run: |
+          TAG=$(curl -sL https://api.github.com/repos/bblanchon/pdfium-binaries/releases/latest | sed -n 's/.*"tag_name": "\(.*\)".*/\1/p' | head -1)
+          echo "pdfium $TAG"
+          mkdir -p tmp
+          curl -sL "https://github.com/bblanchon/pdfium-binaries/releases/download/${TAG}/pdfium-win-x64.tgz" | tar xz -C tmp
+          cp tmp/bin/pdfium.dll .
+      - name: Assemble package
+        shell: bash
+        run: |
+          mkdir -p 发票打印机-win
+          cp target/release/invoice-printer.exe 发票打印机-win/
+          cp pdfium.dll 发票打印机-win/
+          cp packaging/发票打印.bat 发票打印机-win/
+          7z a 发票打印机-win.zip 发票打印机-win
+      - uses: actions/upload-artifact@v4
+        with:
+          name: 发票打印机-win
+          path: 发票打印机-win.zip
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: 发票打印机-win.zip

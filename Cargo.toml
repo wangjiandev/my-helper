@@ -1,0 +1,16 @@
+[package]
+name = "invoice-printer"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+pdfium-render = "0.8"
+clap = { version = "4", features = ["derive"] }
+anyhow = "1"
+regex = "1"
+walkdir = "2"
+comfy-table = "7"
+image = { version = "0.25", default-features = false, features = ["png"] }
+
+[profile.release]
+opt-level = 3
