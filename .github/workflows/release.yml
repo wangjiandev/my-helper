@@ -3,7 +3,7 @@ name: release
 on:
   push:
     branches: [main]
-    tags: ['v*']
+    tags: ["v*"]
   workflow_dispatch:
 
 permissions:
@@ -37,22 +37,22 @@ jobs:
           lipo -create tmp/arm64/lib/libpdfium.dylib tmp/x64/lib/libpdfium.dylib -output libpdfium.dylib
       - name: Assemble package
         run: |
-          mkdir -p 发票打印机-mac
-          cp invoice-printer 发票打印机-mac/
-          cp libpdfium.dylib 发票打印机-mac/
-          cp packaging/发票打印.command 发票打印机-mac/
-          chmod +x 发票打印机-mac/发票打印.command
-          codesign -s - 发票打印机-mac/invoice-printer 发票打印机-mac/libpdfium.dylib
-          ditto -c -k --keepParent 发票打印机-mac 发票打印机-mac.zip
+          mkdir -p dprint-mac
+          cp invoice-printer dprint-mac/
+          cp libpdfium.dylib dprint-mac/
+          cp packaging/dprint.command dprint-mac/
+          chmod +x dprint-mac/dprint.command
+          codesign -s - dprint-mac/invoice-printer dprint-mac/libpdfium.dylib
+          ditto -c -k --keepParent dprint-mac dprint-mac.zip
       - uses: actions/upload-artifact@v4
         with:
-          name: 发票打印机-mac
-          path: 发票打印机-mac.zip
+          name: dprint-mac
+          path: dprint-mac.zip
       - name: Attach to release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: 发票打印机-mac.zip
+          files: dprint-mac.zip
 
   windows:
     runs-on: windows-latest
@@ -72,17 +72,17 @@ jobs:
       - name: Assemble package
         shell: bash
         run: |
-          mkdir -p 发票打印机-win
-          cp target/release/invoice-printer.exe 发票打印机-win/
-          cp pdfium.dll 发票打印机-win/
-          cp packaging/发票打印.bat 发票打印机-win/
-          7z a 发票打印机-win.zip 发票打印机-win
+          mkdir -p dprint-win
+          cp target/release/invoice-printer.exe dprint-win/
+          cp pdfium.dll dprint-win/
+          cp packaging/dprint.bat dprint-win/
+          7z a dprint-win.zip dprint-win
       - uses: actions/upload-artifact@v4
         with:
-          name: 发票打印机-win
-          path: 发票打印机-win.zip
+          name: dprint-win
+          path: dprint-win.zip
       - name: Attach to release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: 发票打印机-win.zip
+          files: dprint-win.zip
