@@ -11,7 +11,7 @@
 | macOS（Apple Silicon + Intel 通用） | `invoice-printer-mac.zip` | 双击 `run.command` |
 | Windows（x64） | `invoice-printer-win.zip` | 双击 `run.bat` |
 
-行为：读取**启动器所在文件夹**（含子目录）的所有 PDF，生成 `output.pdf` 到同一文件夹，并在终端打印分类金额统计表。
+行为：读取启动器所在文件夹下 `source/`（含子目录）的所有 PDF，生成 `out/output.pdf`，并在终端打印分类金额统计表。
 
 **首次运行放行（仅需一次，因未做开发者签名）：**
 
@@ -49,14 +49,14 @@ bash scripts/fetch-pdfium.sh
 ### 2. 编译并运行
 
 ```bash
-cargo run --release -- --dir ./test --out ./output.pdf
+cargo run --release -- --dir ./test --out ./out/output.pdf
 ```
 
 运行后会：
 
 1. 扫描 `./test` 下所有 PDF；
 2. 逐张解析、分类、提取金额并打印到控制台；
-3. 生成 `./output.pdf`；
+3. 生成 `./out/output.pdf`；
 4. 在控制台输出金额统计表。
 
 示例输出：
@@ -66,7 +66,7 @@ cargo run --release -- --dir ./test --out ./output.pdf
 发现 22 个 PDF 文件，开始解析…
   f00001.pdf -> Train ¥642.00
   ...
-已生成: ./output.pdf（5 页）
+已生成: ./out/output.pdf（5 页）
 
 ┌────────┬──────┬────────────┬──────────────────────────┐
 │ 类别   ┆ 张数 ┆ 金额(小写) ┆ 金额(大写)               │
@@ -84,8 +84,8 @@ cargo run --release -- --dir ./test --out ./output.pdf
 invoice-printer --dir <DIR> --out <OUT>
 
 选项：
-  -d, --dir <DIR>    发票目录（递归扫描）  [默认: ./test]
-  -o, --out <OUT>    输出 PDF 路径          [默认: ./output.pdf]
+  -d, --dir <DIR>    发票目录（递归扫描）  [默认: ./source]
+  -o, --out <OUT>    输出 PDF 路径          [默认: ./out/output.pdf]
   -h, --help         帮助
   -V, --version      版本
 ```
@@ -143,7 +143,7 @@ cargo test
 - 金额解析失败：告警并跳过该张统计（仍会排版）。
 - 非 PDF / 损坏文件：跳过并告警。
 - 某类发票为空：正常处理，金额记 0。
-- 目录不存在：报错退出。
+- 目录不存在：自动创建 `source/` 后提示放入发票并退出（输出目录 `out/` 也会自动创建）。
 
 ## 目录结构
 

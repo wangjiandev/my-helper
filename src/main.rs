@@ -9,6 +9,7 @@ mod report;
 mod scanner;
 mod utils;
 
+use std::fs;
 use std::path::PathBuf;
 
 use anyhow::{anyhow, Context, Result};
@@ -24,7 +25,23 @@ fn main() -> Result<()> {
     let pdfium = load_pdfium()?;
 
     println!("扫描目录: {}", args.dir.display());
+    if !args.dir.exists() {
+        fs::create_dir_all(&args.dir)
+            .with_context(|| format!("无法创建目录: {}", args.dir.display()))?;
+        println!(
+            "已创建目录 {}，请将发票 PDF 放入后重新运行。",
+            args.dir.display()
+        );
+        return Ok(());
+    }
     let files = scanner::scan(&args.dir)?;
+    if files.is_empty() {
+        println!(
+            "目录 {} 中没有 PDF 发票，请将发票放入后重新运行。",
+            args.dir.display()
+        );
+        return Ok(());
+    }
     println!("发现 {} 个 PDF 文件，开始解析…", files.len());
 
     let mut invoices = Vec::with_capacity(files.len());
@@ -51,6 +68,12 @@ fn main() -> Result<()> {
         anyhow::bail!("未解析到任何有效发票，已退出。");
     }
 
+    if let Some(parent) = args.out.parent() {
+        if !parent.as_os_str().is_empty() {
+            fs::create_dir_all(parent)
+                .with_context(|| format!("无法创建输出目录: {}", parent.display()))?;
+        }
+    }
     let pages = composer::compose(&pdfium, &invoices, &args.out)
         .with_context(|| format!("合成 PDF 失败"))?;
     println!("\n已生成: {}（{} 页）", args.out.display(), pages);

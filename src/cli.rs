@@ -8,11 +8,11 @@ use clap::Parser;
 #[derive(Parser, Debug)]
 #[command(name = "invoice-printer", version, about)]
 pub struct Args {
-    /// 需要报销的发票目录（递归扫描），默认为当前目录。
-    #[arg(long, short = 'd', default_value = ".")]
+    /// 需要报销的发票目录（递归扫描），默认为当前项目的 `source` 目录。
+    #[arg(long, short = 'd', default_value = "./source")]
     pub dir: PathBuf,
 
-    /// 输出 PDF 路径。
-    #[arg(long, short = 'o', default_value = "./output.pdf")]
+    /// 输出 PDF 路径，默认输出到当前项目的 `out` 目录。
+    #[arg(long, short = 'o', default_value = "./out/output.pdf")]
     pub out: PathBuf,
 }
